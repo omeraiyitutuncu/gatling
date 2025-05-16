@@ -13,7 +13,7 @@ class CustomFeeder extends Simulation {
     .acceptHeader(value = "application/json")
     .contentTypeHeader(value = "application/json")
 
-  val idNumbers = (1 to 10).iterator
+  val idNumbers = (1 to 1000).iterator
   val rnd = new Random()
 
   val pattern = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -26,16 +26,21 @@ class CustomFeeder extends Simulation {
     startDate.minusDays(random.nextInt(30)).format(pattern)
   }
 
+  val customFeeder = Iterator.continually {
+    val id = Random.nextInt(10000)
 
-  val customFeeder = Iterator.continually(Map(
-    "gameId" -> idNumbers.next(),
-    "name" -> ("Game-" + randomString()),
-    "releaseDate" -> getRandomDate(random = rnd),
-    "reviewScore" -> rnd.nextInt(100),
-    "category" -> (s"Category- ${randomString()}"),
-    "rating" -> (s"Rating- ${randomString()}")
-  ))
-
+    Map(
+      "gameId" -> id,
+      "name" -> s"Game - ${randomString()}",
+      "releaseDate" -> getRandomDate(random = rnd),
+      "reviewScore" -> rnd.nextInt(100),
+      "category" -> s"Category - ${randomString()}",
+      "rating" -> s"Rating - ${randomString()}"
+    )
+  }
+  println("@@@@@@@@@@@@@@@@@@@@@@@@")
+  println(customFeeder.next())
+  println("@@@@@@@@@@@@@@@@@@@@@@@@")
 
   def authonticate: ChainBuilder = {
     exec(
@@ -44,8 +49,6 @@ class CustomFeeder extends Simulation {
         .body(StringBody(string = "{\n  \"password\": \"admin\",\n  \"username\": \"admin\"\n}"))
         .check(jsonPath(path = "$.token").saveAs("jwtToken"))
     )
-      .exec { session => println(session("jwtToken").as[String]); session }
-      .pause(duration = 1)
   }
 
   def createNewGame(): ChainBuilder = {
@@ -55,10 +58,29 @@ class CustomFeeder extends Simulation {
           .post(url = "/videogame")
           .header("Authorization", "Bearer #{jwtToken}")
           .body(ElFileBody(filePath = "bodies/newGameTemplate.json")).asJson
-//          .body(StringBody(
-//            "{\n  \"category\": \"Platform\",\n  \"name\": \"Mario\",\n  \"rating\": \"Mature\",\n  \"releaseDate\": \"2012-05-04\",\n  \"reviewScore\": 85\n}"
-//          ))
           .check(bodyString.saveAs(key = "responseBody")))
+
+        .exec { session => println(session("responseBody").as[String]); session }
+        .pause(duration = 1)
+    }
+  }
+
+  def createNewGame2(): ChainBuilder = {
+    repeat(times = 10) {
+      feed(customFeeder)
+        .exec(http(requestName = "Create new game")
+          .post(url = "/videogame")
+          .header("Authorization", "Bearer #{jwtToken}")
+          .body(StringBody(
+            """{
+    "id": #{gameId},
+    "name": "#{name}",
+    "releaseDate": "#{releaseDate}",
+    "reviewScore": #{reviewScore},
+    "category": "#{category}",
+    "rating": "#{rating}"
+  }"""
+          )).asJson.check(bodyString.saveAs(key = "responseBody")))
 
         .exec { session => println(session("responseBody").as[String]); session }
         .pause(duration = 1)

@@ -1,0 +1,4 @@
+mvn gatling:test -Dgatling.simulationClass=videogamedb.commandline.RunTimeParameter
+mvn gatling:test -Dgatling.simulationClass=videogamedb.feeders.CustomFeeder
+
+mvn gatling:test -Dgatling.simulationClass=videogamedb.commandline.RunTimeParameter -DUSERS=10 -DRAMP_DURATION=20 -DTEST_DURATION=30
